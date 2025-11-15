@@ -283,7 +283,7 @@ const ReturnProducts = () => {
               <h5 className="mb-0">Previous Returns</h5>
             </Card.Header>
             <Card.Body>
-              <p><strong>Return Date:</strong> {new Date(receipt.returnInfo.returnDate).toLocaleString()}</p>
+              <p><strong>Return Date:</strong> {formatDisplayDate(receipt.returnInfo.returnDate)}</p>
               <p><strong>Return Total:</strong> {formatCurrency(receipt.returnInfo.returnTotal)}</p>
               {receipt.returnInfo.returnReason && (
                 <p><strong>Return Reason:</strong> {receipt.returnInfo.returnReason}</p>
