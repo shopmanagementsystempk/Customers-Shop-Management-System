@@ -251,7 +251,7 @@ const translations = {
     failedToSubmitAttendance: "Failed to submit attendance. Please try again.",
 
     // Sales and Profit Analytics
-    salesAnalytics: "Sales Analytics",
+    salesAnalytics: "Profit and Loss",
     salesAndProfit: "Sales & Profit",
     salesAnalyticsDescription: "View detailed sales and profit analytics on daily, monthly and yearly basis.",
     viewAnalytics: "View Analytics",
