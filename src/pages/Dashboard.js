@@ -792,6 +792,21 @@ const Dashboard = () => {
           .table-responsive.small-table th {
             padding: 0.3rem;
           }
+          .table-responsive.small-table .text-truncate {
+            max-width: 60px;
+          }
+        }
+        @media (max-width: 400px) {
+          .table-responsive.small-table {
+            font-size: 0.8rem;
+          }
+          .table-responsive.small-table td, 
+          .table-responsive.small-table th {
+            padding: 0.25rem;
+          }
+          .table-responsive.small-table .text-truncate {
+            max-width: 50px;
+          }
         }
         .summary-box { height: 180px; display: flex; flex-direction: column; justify-content: center; }
       `}</style>
