@@ -48,6 +48,13 @@ const ViewReceipts = () => {
           ...doc.data()
         }));
         
+        // Sort receipts by timestamp in descending order (newest first)
+        receiptsData.sort((a, b) => {
+          const dateA = a.timestamp ? new Date(a.timestamp.seconds ? a.timestamp.seconds * 1000 : a.timestamp) : new Date(0);
+          const dateB = b.timestamp ? new Date(b.timestamp.seconds ? b.timestamp.seconds * 1000 : b.timestamp) : new Date(0);
+          return dateB - dateA; // Descending order (newest first)
+        });
+        
         setReceipts(receiptsData);
       })
       .catch(error => {
@@ -80,7 +87,10 @@ const ViewReceipts = () => {
       // Handle client-side sorting
       let comparison = 0;
       if (sortField === 'timestamp') {
-        comparison = new Date(a.timestamp) - new Date(b.timestamp);
+        // Handle Firestore timestamp objects
+        const dateA = a.timestamp ? new Date(a.timestamp.seconds ? a.timestamp.seconds * 1000 : a.timestamp) : new Date(0);
+        const dateB = b.timestamp ? new Date(b.timestamp.seconds ? b.timestamp.seconds * 1000 : b.timestamp) : new Date(0);
+        comparison = dateA - dateB;
       } else if (sortField === 'totalAmount') {
         comparison = parseFloat(a.totalAmount) - parseFloat(b.totalAmount);
       }
