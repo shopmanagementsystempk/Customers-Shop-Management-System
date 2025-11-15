@@ -23,9 +23,9 @@ const NewReceipt = () => {
   const [productCode, setProductCode] = useState('');
   const [customer, setCustomer] = useState('Walk-in Customer');
   const [autoPrint, setAutoPrint] = useState(true);
-  const [discount, setDiscount] = useState('0');
-  const [tax, setTax] = useState('0');
-  const [enterAmount, setEnterAmount] = useState('0');
+  const [discount, setDiscount] = useState('');
+  const [tax, setTax] = useState('');
+  const [enterAmount, setEnterAmount] = useState('');
   const [transactionId] = useState(generateTransactionId());
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -219,14 +219,18 @@ const NewReceipt = () => {
     const totalAmount = items.reduce((sum, item) => 
       sum + (parseFloat(item.salePrice || 0) * parseFloat(item.quantity || 1)), 0);
     const discountAmount = parseFloat(discount || 0);
-    const taxAmount = parseFloat(tax || 0);
-    const payable = totalAmount - discountAmount + taxAmount;
+    const subtotalAfterDiscount = totalAmount - discountAmount;
+    // Calculate tax as percentage of subtotal after discount
+    const taxPercentage = parseFloat(tax || 0);
+    const taxAmount = (taxPercentage / 100) * subtotalAfterDiscount;
+    const payable = subtotalAfterDiscount + taxAmount;
     const receivedAmount = parseFloat(enterAmount || 0);
     const balance = receivedAmount - payable;
     
     return {
       totalQuantities: totalQuantities.toFixed(2),
       totalAmount: totalAmount.toFixed(2),
+      taxAmount: taxAmount.toFixed(2),
       payable: payable.toFixed(2),
       receivedAmount: receivedAmount.toFixed(2),
       balance: balance.toFixed(2),
@@ -303,9 +307,9 @@ const NewReceipt = () => {
     setSelectedProduct('');
     setProductCode('');
     setCustomer('Walk-in Customer');
-    setDiscount('0');
-    setTax('0');
-    setEnterAmount('0');
+    setDiscount('');
+    setTax('');
+    setEnterAmount('');
     setSelectedEmployee(null);
     setError('');
     setSuccess('');
@@ -821,15 +825,19 @@ const NewReceipt = () => {
                     />
                   </Form.Group>
                   <Form.Group className="mb-3">
-                    <Form.Label>Tax (RS)</Form.Label>
+                    <Form.Label>Tax (%)</Form.Label>
                     <Form.Control
                       type="number"
                       value={tax}
                       onChange={(e) => setTax(e.target.value)}
-                      placeholder="0.00"
+                      placeholder="0"
                       min="0"
+                      max="100"
                       step="0.01"
                     />
+                    <Form.Text className="text-muted">
+                      Tax percentage will be calculated on the subtotal (after discount)
+                    </Form.Text>
                   </Form.Group>
                 </div>
 
@@ -843,8 +851,8 @@ const NewReceipt = () => {
                     <span className="text-danger">-{formatCurrency(discount)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Tax:</span>
-                    <span>+{formatCurrency(tax)}</span>
+                    <span className="text-muted">Tax ({tax || 0}%):</span>
+                    <span>+{formatCurrency(totals.taxAmount)}</span>
                   </div>
                   <div className="d-flex justify-content-between mb-3 pt-2 border-top">
                     <span className="fw-bold">Total Payable:</span>
