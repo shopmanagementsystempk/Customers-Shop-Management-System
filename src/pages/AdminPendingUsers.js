@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Table, Button, Card, Badge, Alert, Spinner, Modal } from 'react-bootstrap';
-import { format } from 'date-fns';
 import { useAdmin } from '../contexts/AdminContext';
 import AdminNavbar from '../components/AdminNavbar';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 const AdminPendingUsers = () => {
   const { getPendingUsers, approveUser, rejectUser } = useAdmin();
@@ -208,7 +208,7 @@ const AdminPendingUsers = () => {
                           <td>{user.phoneNumber || 'N/A'}</td>
                           <td>
                             {user.createdAt ? 
-                              format(new Date(user.createdAt), 'MMM dd, yyyy HH:mm') : 
+                              formatDisplayDate(user.createdAt) : 
                               'N/A'}
                           </td>
                           <td>
@@ -293,7 +293,7 @@ const AdminPendingUsers = () => {
                     <p className="text-muted mb-1">{user.phoneNumber || 'No phone'}</p>
                     <p className="text-muted small mb-3">
                       Registered: {user.createdAt ? 
-                        format(new Date(user.createdAt), 'MMM dd, yyyy') : 
+                        formatDisplayDate(user.createdAt) : 
                         'N/A'}
                     </p>
                     <div className="d-flex">
