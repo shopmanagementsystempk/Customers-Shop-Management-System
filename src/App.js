@@ -49,6 +49,8 @@ import AddExpense from './pages/AddExpense';
 import EditExpense from './pages/EditExpense';
 import ExpenseCategories from './pages/ExpenseCategories';
 import ShopProfile from './pages/ShopProfile';
+import CustomerInformation from './pages/CustomerInformation';
+import SupplierInformation from './pages/SupplierInformation';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -313,6 +315,22 @@ function AppContent() {
             <ErrorBoundary>
               <PrivateRoute>
                 <ShopProfile />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          
+          {/* Contacts Routes */}
+          <Route path="/customer-information" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <CustomerInformation />
+              </PrivateRoute>
+            </ErrorBoundary>
+          } />
+          <Route path="/supplier-information" element={
+            <ErrorBoundary>
+              <PrivateRoute>
+                <SupplierInformation />
               </PrivateRoute>
             </ErrorBoundary>
           } />
