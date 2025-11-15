@@ -7,6 +7,8 @@ import { createPurchaseOrder, getPurchaseOrders } from '../utils/purchaseUtils';
 import { formatDisplayDate } from '../utils/dateUtils';
 import { getShopStock } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
+import { db } from '../firebase/config';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 const defaultRow = {
   sourceItemId: '',
@@ -49,6 +51,8 @@ const PurchaseManagement = () => {
   const [stockLoading, setStockLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const [suppliers, setSuppliers] = useState([]);
+  const [suppliersLoading, setSuppliersLoading] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategory, setNewCategory] = useState({ name: '', description: '' });
   const [editCategory, setEditCategory] = useState({ id: '', name: '', description: '' });
@@ -92,6 +96,39 @@ const PurchaseManagement = () => {
   useEffect(() => {
     fetchCategories();
   }, [fetchCategories]);
+
+  const fetchSuppliers = useCallback(async () => {
+    if (!currentUser?.uid) return;
+    
+    setSuppliersLoading(true);
+    try {
+      const suppliersRef = collection(db, 'suppliers');
+      const q = query(
+        suppliersRef,
+        where('shopId', '==', currentUser.uid)
+      );
+      const querySnapshot = await getDocs(q);
+      const suppliersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      // Sort by name in JavaScript to avoid Firestore index requirement
+      suppliersData.sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setSuppliers(suppliersData);
+    } catch (err) {
+      console.error('Error fetching suppliers:', err);
+    } finally {
+      setSuppliersLoading(false);
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, [fetchSuppliers]);
 
   const setRowValue = (index, key, value) => {
     setRows(prev => {
@@ -446,7 +483,21 @@ const PurchaseManagement = () => {
                 <Col md={4}>
                   <Form.Group>
                     <Form.Label>Supplier</Form.Label>
-                    <Form.Control value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="e.g. ABC Distributors" />
+                    <Form.Select 
+                      value={supplier} 
+                      onChange={(e) => setSupplier(e.target.value)}
+                      disabled={suppliersLoading}
+                    >
+                      <option value="">Select a supplier</option>
+                      {suppliers.map(sup => (
+                        <option key={sup.id} value={sup.name}>
+                          {sup.name} {sup.company ? `(${sup.company})` : ''}
+                        </option>
+                      ))}
+                    </Form.Select>
+                    <Form.Text className="text-muted">
+                      {suppliersLoading ? 'Loading suppliers...' : suppliers.length === 0 ? 'No suppliers added yet. Add suppliers from Contacts > Supplier Information.' : ''}
+                    </Form.Text>
                   </Form.Group>
                 </Col>
                 <Col md={4}>
