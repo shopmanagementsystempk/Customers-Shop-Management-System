@@ -195,7 +195,7 @@ const ViewReceipts = () => {
             variant="outline-primary" 
             onClick={() => navigate('/sales-analytics')}
           >
-            <Translate textKey="salesAnalytics" fallback="Sales Analytics" />
+            <Translate textKey="salesAnalytics" fallback="Profit and Loss" />
           </Button>
         </div>
         
