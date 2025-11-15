@@ -5,6 +5,7 @@ import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../contexts/AuthContext';
 import { getStockMovements, getShopStock } from '../utils/stockUtils';
+import { formatDisplayDate } from '../utils/dateUtils';
 
 const StockHistory = () => {
   const { currentUser } = useAuth();
@@ -31,7 +32,7 @@ const StockHistory = () => {
         <td>${m.unit || '-'}</td>
         <td>${m.supplier || '-'}</td>
         <td>${m.note || '-'}</td>
-        <td>${new Date(m.createdAt).toLocaleString()}</td>
+        <td>${formatDisplayDate(m.createdAt)}</td>
       </tr>
     `).join('');
     win.document.write(`
@@ -100,7 +101,7 @@ const StockHistory = () => {
                       <td>{m.unit || '-'}</td>
                       <td>{m.supplier || '-'}</td>
                       <td>{m.note || '-'}</td>
-                      <td>{new Date(m.createdAt).toLocaleString()}</td>
+                      <td>{formatDisplayDate(m.createdAt)}</td>
                     </tr>
                   ))}
                   {filtered.length === 0 && (
