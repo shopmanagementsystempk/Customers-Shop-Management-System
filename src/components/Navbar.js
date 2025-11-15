@@ -379,7 +379,7 @@ const MainNavbar = () => {
                   renderNavItem('/receipts', 'receipt_long', <Translate textKey="receipts" />, true)
                 )}
                 {hasPermission('canViewAnalytics') && (
-                  renderNavItem('/sales-analytics', 'query_stats', <Translate textKey="salesAnalytics" fallback="Sales Analytics" />, true)
+                  renderNavItem('/sales-analytics', 'query_stats', <Translate textKey="salesAnalytics" fallback="Profit and Loss" />, true)
                 )}
                 {hasPermission('canViewStock') && (
                   <>
@@ -452,7 +452,7 @@ const MainNavbar = () => {
                 renderNavItem('/receipts', 'receipt_long', <Translate textKey="receipts" />)
               )}
               {hasPermission('canViewAnalytics') && (
-                renderNavItem('/sales-analytics', 'query_stats', <Translate textKey="salesAnalytics" fallback="Sales Analytics" />)
+                renderNavItem('/sales-analytics', 'query_stats', <Translate textKey="salesAnalytics" fallback="Profit and Loss" />)
               )}
               {hasPermission('canViewStock') && (
                 <>
