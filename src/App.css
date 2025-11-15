@@ -440,6 +440,66 @@ body {
   }
 }
 
+/* Mobile-specific dashboard fixes */
+@media (max-width: 768px) {
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .dashboard-stat-card {
+    padding: 1rem;
+  }
+  
+  .dashboard-stat-card__value {
+    font-size: 1.5rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  .dashboard-stat-card__label {
+    font-size: 0.75rem;
+  }
+  
+  .dashboard-stat-card__trend {
+    font-size: 0.8rem;
+  }
+  
+  .stat-chip {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .dashboard-stat-card {
+    padding: 0.875rem;
+  }
+  
+  .dashboard-stat-card__value {
+    font-size: 1.25rem;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.2;
+  }
+  
+  .dashboard-stat-card__label {
+    font-size: 0.7rem;
+  }
+  
+  .dashboard-stat-card__trend {
+    font-size: 0.75rem;
+  }
+}
+
 .app-mobile-sidebar .nav-link {
   color: rgba(255, 255, 255, 0.9) !important;
   font-weight: 600;
@@ -623,6 +683,35 @@ body {
 .dashboard-card .card-text {
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+/* Mobile dashboard card fixes */
+@media (max-width: 768px) {
+  .dashboard-card .card-body {
+    padding: 1.25rem;
+  }
+  
+  .dashboard-card .card-title {
+    font-size: 1.1rem;
+  }
+  
+  .dashboard-card .card-text {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-card .card-body {
+    padding: 1rem;
+  }
+  
+  .dashboard-card .card-title {
+    font-size: 1rem;
+  }
+  
+  .dashboard-card .card-text {
+    font-size: 0.875rem;
+  }
 }
 
 /* Enhanced Button Styles */
@@ -1229,3 +1318,4 @@ body {
 .rtl .bi {
   transform: scaleX(-1);
 }
+
