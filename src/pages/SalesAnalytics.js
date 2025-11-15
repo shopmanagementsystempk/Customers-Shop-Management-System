@@ -452,27 +452,27 @@ const SalesAnalytics = () => {
     return (
       <>
         <Row className="mb-4">
-          <Col md={3}>
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card">
+          <Col md={3} className="d-flex">
+            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
               <Card.Title><Translate textKey="totalSales" fallback="Total Sales" /></Card.Title>
               <Card.Text className="display-6">{formatCurrency(analytics.sales)}</Card.Text>
             </Card>
           </Col>
-          <Col md={3}>
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card">
+          <Col md={3} className="d-flex">
+            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
               <Card.Title><Translate textKey="totalProfit" fallback="Total Profit" /></Card.Title>
               <Card.Text className="display-6">{formatCurrency(analytics.profit)}</Card.Text>
               <small className="text-muted">{profitMargin}% margin</small>
             </Card>
           </Col>
-          <Col md={3}>
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card">
+          <Col md={3} className="d-flex">
+            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
               <Card.Title><Translate textKey="itemsSold" fallback="Items Sold" /></Card.Title>
               <Card.Text className="display-6">{analytics.totalItems}</Card.Text>
             </Card>
           </Col>
-          <Col md={3}>
-            <Card className="text-center p-3 mb-3 shadow-sm analytics-card">
+          <Col md={3} className="d-flex">
+            <Card className="text-center p-3 mb-3 shadow-sm analytics-card h-100 w-100">
               <Card.Title><Translate textKey="transactions" fallback="Transactions" /></Card.Title>
               <Card.Text className="display-6">{analytics.transactionCount}</Card.Text>
             </Card>
