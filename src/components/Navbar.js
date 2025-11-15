@@ -29,6 +29,11 @@ const MainNavbar = () => {
   const [employeesOpen, setEmployeesOpen] = useState(isEmployeesPage);
   const [employeesOpenMobile, setEmployeesOpenMobile] = useState(isEmployeesPage);
 
+  // Check if we're on a contacts page to auto-open the menu
+  const isContactsPage = location.pathname === '/customer-information' || location.pathname === '/supplier-information';
+  const [contactsOpen, setContactsOpen] = useState(isContactsPage);
+  const [contactsOpenMobile, setContactsOpenMobile] = useState(isContactsPage);
+
   // Auto-open expenses menu when on expenses pages
   useEffect(() => {
     if (isExpensesPage) {
@@ -52,6 +57,14 @@ const MainNavbar = () => {
       setEmployeesOpenMobile(true);
     }
   }, [isEmployeesPage]);
+
+  // Auto-open contacts menu when on contacts pages
+  useEffect(() => {
+    if (isContactsPage) {
+      setContactsOpen(true);
+      setContactsOpenMobile(true);
+    }
+  }, [isContactsPage]);
 
   const handleLogout = () => {
     logout()
@@ -150,6 +163,10 @@ const MainNavbar = () => {
     },
     badge: {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      color: '#ffffff'
+    },
+    contacts: {
+      background: 'linear-gradient(135deg, #2196F3 0%, #21CBF3 100%)',
       color: '#ffffff'
     }
   };
@@ -289,6 +306,35 @@ const MainNavbar = () => {
     );
   };
 
+  const renderContactsMenu = (closeSidebar = false, isMobile = false) => {
+    const isOpen = isMobile ? contactsOpenMobile : contactsOpen;
+    const setIsOpen = isMobile ? setContactsOpenMobile : setContactsOpen;
+    const iconStyle = googleIconPalette['contacts'] || defaultGoogleIconStyle;
+    const isContactsActive = isActive('/customer-information') || isActive('/supplier-information');
+
+    return (
+      <>
+        <div 
+          className={`sidebar-link ${isContactsActive ? 'active' : ''}`}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          onClick={() => setIsOpen(!isOpen)}
+        >
+          <span className="sidebar-icon" style={iconStyle}>
+            <span className="material-icons-outlined google-icon">contacts</span>
+          </span>
+          <span className="sidebar-text">Contacts</span>
+          <i className={`bi ${isOpen ? 'bi-chevron-down' : 'bi-chevron-right'} ms-auto`} style={{ fontSize: '0.8rem' }}></i>
+        </div>
+        <Collapse in={isOpen}>
+          <div className="sidebar-submenu">
+            {renderSubNavItem('/customer-information', 'Customer Information', closeSidebar)}
+            {renderSubNavItem('/supplier-information', 'Supplier Information', closeSidebar)}
+          </div>
+        </Collapse>
+      </>
+    );
+  };
+
   return (
     <>
       {/* Mobile Top Bar with Menu Button */}
@@ -350,6 +396,7 @@ const MainNavbar = () => {
                 {hasPermission('canMarkAttendance') && (
                   renderAttendanceMenu(true, true)
                 )}
+                {renderContactsMenu(true, true)}
                 {!isStaff && !isGuest && (
                   renderNavItem('/settings', 'settings', <Translate textKey="settings" />, true)
                 )}
@@ -422,6 +469,7 @@ const MainNavbar = () => {
               {hasPermission('canMarkAttendance') && (
                 renderAttendanceMenu(false, false)
               )}
+              {renderContactsMenu(false, false)}
               {!isStaff && !isGuest && (
                 renderNavItem('/settings', 'settings', <Translate textKey="settings" />)
               )}
