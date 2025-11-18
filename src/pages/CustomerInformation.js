@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Table, Button, Form, Modal, Alert, Spinner, Row, Col, InputGroup } from 'react-bootstrap';
+import { Container, Card, Table, Button, Form, Modal, Alert, Spinner, Row, Col, InputGroup, Badge } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
@@ -25,6 +25,11 @@ const CustomerInformation = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
+  const [loans, setLoans] = useState([]);
+  const [loansLoading, setLoansLoading] = useState(false);
+  const [showLoansModal, setShowLoansModal] = useState(false);
+  const [selectedCustomerLoans, setSelectedCustomerLoans] = useState([]);
+  const [selectedCustomerName, setSelectedCustomerName] = useState('');
 
   const fetchCustomers = useCallback(async () => {
     if (!activeShopId) return;
@@ -59,6 +64,25 @@ const CustomerInformation = () => {
   useEffect(() => {
     fetchCustomers();
   }, [fetchCustomers]);
+
+  useEffect(() => {
+    const fetchLoans = async () => {
+      if (!activeShopId) return;
+      setLoansLoading(true);
+      try {
+        const loansRef = collection(db, 'customerLoans');
+        const q = query(loansRef, where('shopId', '==', activeShopId));
+        const snapshot = await getDocs(q);
+        const loanData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLoans(loanData);
+      } catch (err) {
+        console.error('Error fetching customer loans:', err);
+      } finally {
+        setLoansLoading(false);
+      }
+    };
+    fetchLoans();
+  }, [activeShopId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -229,6 +253,7 @@ const CustomerInformation = () => {
                     <th>Email</th>
                     <th>Address</th>
                     <th>City</th>
+                    <th>Loans</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -241,6 +266,32 @@ const CustomerInformation = () => {
                       <td>{customer.address || '-'}</td>
                       <td>{customer.city || '-'}</td>
                       <td>
+                        {(() => {
+                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
+                          const count = custLoans.length;
+                          const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+                          return (
+                            <div>
+                              <Badge bg={count > 0 ? 'danger' : 'secondary'}>{count}</Badge>
+                              <span className="ms-2">RS {total.toFixed(2)}</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td>
+                        <Button
+                          variant="outline-primary"
+                          size="sm"
+                          className="me-2"
+                          onClick={() => {
+                            const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase());
+                            setSelectedCustomerLoans(custLoans);
+                            setSelectedCustomerName(customer.name || '');
+                            setShowLoansModal(true);
+                          }}
+                        >
+                          View Loans
+                        </Button>
                         <Button
                           variant="outline-primary"
                           size="sm"
@@ -378,6 +429,43 @@ const CustomerInformation = () => {
           </Modal.Footer>
         </Modal>
       </Container>
+
+      <Modal show={showLoansModal} onHide={() => setShowLoansModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Loan History - {selectedCustomerName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {loansLoading ? (
+            <div className="text-center py-3"><Spinner animation="border" /></div>
+          ) : selectedCustomerLoans.length === 0 ? (
+            <p className="text-muted">No loans recorded for this customer.</p>
+          ) : (
+            <Table hover size="sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Transaction</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedCustomerLoans.map(loan => (
+                  <tr key={loan.id}>
+                    <td>{loan.timestamp ? new Date(loan.timestamp).toLocaleString() : '-'}</td>
+                    <td>{loan.transactionId || loan.receiptId || '-'}</td>
+                    <td>RS {(parseFloat(loan.amount) || 0).toFixed(2)}</td>
+                    <td>{loan.status || 'outstanding'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowLoansModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
