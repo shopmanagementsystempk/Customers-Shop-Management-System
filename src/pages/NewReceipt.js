@@ -459,11 +459,12 @@ const NewReceipt = () => {
                 const rate = Math.round(parseFloat(item.salePrice || 0));
                 const amount = Math.round(qty * rate);
                 const name = (item.name || '').replace(/\n/g, '\n');
+                const unit = item.quantityUnit && item.quantityUnit.toLowerCase() !== 'units' ? item.quantityUnit.toUpperCase() : '';
                 return `
                   <tr>
                     <td class="c">${idx + 1}</td>
                     <td class="wrap">${name}</td>
-                    <td class="c">${qty}</td>
+                    <td class="c">${qty} ${unit}</td>
                     <td class="r">${rate}</td>
                     <td class="r">${amount}</td>
                   </tr>
