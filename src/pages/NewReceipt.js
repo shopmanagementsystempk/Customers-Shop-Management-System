@@ -26,6 +26,7 @@ const NewReceipt = () => {
   const [discount, setDiscount] = useState('');
   const [tax, setTax] = useState('');
   const [enterAmount, setEnterAmount] = useState('');
+  const [isLoan, setIsLoan] = useState(false);
   const [transactionId] = useState(generateTransactionId());
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -471,6 +472,7 @@ const NewReceipt = () => {
             <div class="line"><span>Total</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
             ${parseFloat(discount) > 0 ? `<div class="line"><span>Discount</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
             <div class="line"><span>Net Total</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
+            ${isLoan ? `<div class="line"><span>Loan</span><span>${Math.round(Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0))}</span></div>` : ''}
           </div>
 
           <div class="net">${Math.round(parseFloat(totals.payable))}</div>
@@ -540,7 +542,9 @@ const NewReceipt = () => {
         cashGiven: parseFloat(enterAmount) || 0,
         change: parseFloat(enterAmount) - parseFloat(totals.payable) || 0,
         employeeName: selectedEmployee ? selectedEmployee.name : null,
-        employeeId: selectedEmployee ? selectedEmployee.id : null
+        employeeId: selectedEmployee ? selectedEmployee.id : null,
+        isLoan: !!isLoan,
+        loanAmount: Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0)
       };
       
       const receiptId = await saveReceipt(receiptData);
@@ -847,6 +851,17 @@ const NewReceipt = () => {
                   Payment Summary
                 </h5>
 
+                <div className="loan-banner mb-3">
+                  <i className="bi bi-exclamation-diamond-fill"></i>
+                  <Form.Check
+                    type="switch"
+                    id="isLoan"
+                    label="Mark as Loan"
+                    checked={isLoan}
+                    onChange={(e) => setIsLoan(e.target.checked)}
+                  />
+                </div>
+
                 <div className="mb-4">
                   <Form.Group className="mb-3">
                     <Form.Label>Discount (RS)</Form.Label>
@@ -919,6 +934,14 @@ const NewReceipt = () => {
                       {formatCurrency(totals.balance)}
                     </strong>
                   </div>
+                  {isLoan && (
+                    <div className="d-flex justify-content-between mt-2">
+                      <span className="fw-bold">Loan:</span>
+                      <strong className="text-danger">
+                        {formatCurrency(Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0))}
+                      </strong>
+                    </div>
+                  )}
                 </div>
 
                 <div className="d-grid gap-2">
