@@ -421,6 +421,7 @@ const ViewReceipt = () => {
                   <div className="line"><span>Total</span><span>{receipt.items.reduce((s,i)=>s+parseFloat(i.quantity||0),0).toFixed(2)}</span></div>
                   {receipt.discount>0 && (<div className="line"><span>Discount</span><span>{Math.round(parseFloat(receipt.discount))}</span></div>)}
                   <div className="line"><span>Net Total</span><span>{Math.round(parseFloat(receipt.totalAmount))}</span></div>
+                  {receipt.isLoan && (<div className="line"><span>Loan</span><span>{Math.round(parseFloat(receipt.loanAmount||0))}</span></div>)}
                 </div>
                 <div className="net">{Math.round(parseFloat(receipt.totalAmount))}</div>
                 <div className="center sm" style={{marginTop:'8px'}}>Thank you For Shoping !</div>
