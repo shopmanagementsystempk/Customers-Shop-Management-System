@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Container, Card, Table, Button, Form, Modal, Alert, Spinner, Row, Col, InputGroup, Badge } from 'react-bootstrap';
 import { useAuth } from '../contexts/AuthContext';
+import { generateTransactionId } from '../utils/receiptUtils';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs } from 'firebase/firestore';
 
 const CustomerInformation = () => {
-  const { currentUser, activeShopId } = useAuth();
+  const { currentUser, activeShopId, shopData } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -30,6 +31,14 @@ const CustomerInformation = () => {
   const [showLoansModal, setShowLoansModal] = useState(false);
   const [selectedCustomerLoans, setSelectedCustomerLoans] = useState([]);
   const [selectedCustomerName, setSelectedCustomerName] = useState('');
+  const [showPayLoanModal, setShowPayLoanModal] = useState(false);
+  const [payingCustomerName, setPayingCustomerName] = useState('');
+  const [customerOutstandingLoans, setCustomerOutstandingLoans] = useState([]);
+  const [outstandingTotal, setOutstandingTotal] = useState(0);
+  const [payLoading, setPayLoading] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('0');
+  const [paymentTransactionId, setPaymentTransactionId] = useState('');
+  const printIframeRef = useRef(null);
 
   const fetchCustomers = useCallback(async () => {
     if (!activeShopId) return;
@@ -191,6 +200,144 @@ const CustomerInformation = () => {
     customer.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const openPayLoanModal = (customer) => {
+    const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
+    const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+    setCustomerOutstandingLoans(custLoans);
+    setOutstandingTotal(total);
+    setPayingCustomerName(customer.name || '');
+    setPaymentAmount(total.toFixed(2));
+    setPaymentTransactionId(generateTransactionId());
+    setShowPayLoanModal(true);
+  };
+
+  const confirmPayLoan = async () => {
+    if (customerOutstandingLoans.length === 0) {
+      setShowPayLoanModal(false);
+      return;
+    }
+    setPayLoading(true);
+    try {
+      let remaining = Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal));
+      const now = new Date().toISOString();
+      const sorted = [...customerOutstandingLoans].sort((a,b) => (a.timestamp||'').localeCompare(b.timestamp||''));
+      const updatedLoansLocal = [...loans];
+      for (const loan of sorted) {
+        if (remaining <= 0) break;
+        const amt = Math.max(0, parseFloat(loan.amount) || 0);
+        if (remaining >= amt) {
+          await updateDoc(doc(db, 'customerLoans', loan.id), {
+            status: 'paid',
+            paidAt: now,
+            paidAmount: amt,
+            amount: 0
+          });
+          const idx = updatedLoansLocal.findIndex(l => l.id === loan.id);
+          if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'paid', amount: 0, paidAt: now, paidAmount: amt };
+          remaining -= amt;
+        } else {
+          await updateDoc(doc(db, 'customerLoans', loan.id), {
+            status: 'outstanding',
+            paidAt: now,
+            paidAmount: (parseFloat(loan.paidAmount)||0) + remaining,
+            amount: (amt - remaining)
+          });
+          const idx = updatedLoansLocal.findIndex(l => l.id === loan.id);
+          if (idx >= 0) updatedLoansLocal[idx] = { ...updatedLoansLocal[idx], status: 'outstanding', amount: (amt - remaining), paidAt: now, paidAmount: (parseFloat(loan.paidAmount)||0) + remaining };
+          remaining = 0;
+        }
+      }
+      setLoans(updatedLoansLocal);
+      await addDoc(collection(db, 'customerLoanPayments'), {
+        shopId: activeShopId,
+        customerName: payingCustomerName,
+        transactionId: paymentTransactionId,
+        amountPaid: Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal)),
+        timestamp: now
+      });
+      setShowPayLoanModal(false);
+      setSuccess('Loan payment recorded');
+      setTimeout(() => setSuccess(''), 3000);
+      const amtToPrint = Math.max(0, Math.min(parseFloat(paymentAmount) || 0, outstandingTotal));
+      printPaymentReceipt(paymentTransactionId, payingCustomerName, amtToPrint);
+    } catch (err) {
+      setError('Failed to pay loan: ' + err.message);
+    } finally {
+      setPayLoading(false);
+    }
+  };
+
+  const printPaymentReceipt = (transactionId, customerName, amount) => {
+    const existing = document.getElementById('print-iframe');
+    if (existing) existing.remove();
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+    const currentDate = new Date().toLocaleDateString();
+    const currentTime = new Date().toLocaleTimeString();
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Loan Payment - ${shopData?.shopName || 'Shop'}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            @media print { body { margin: 0; padding: 0; } }
+            body { width: 80mm; font-family: 'Courier New', monospace; color: #000; margin: 0 auto; background: #fff; padding: 6mm 4mm; font-weight: 700; }
+            .center { text-align: center; }
+            .header-logo { max-height: 36px; margin: 6px auto 8px; display: block; }
+            .shop-name { font-size: 20px; font-weight: 700; margin: 4px 0; }
+            .shop-address, .shop-phone { font-size: 12px; margin: 2px 0; }
+            .sep { border-top: 1px dotted #000; margin: 6px 0; }
+            .meta { display: grid; grid-template-columns: 1fr 1fr; font-size: 12px; margin: 6px 0; }
+            .meta-right { text-align: right; }
+            .totals { margin-top: 8px; border-top: 1px dotted #000; border-bottom: 1px dotted #000; padding: 6px 0; font-size: 12px; }
+            .line { display: flex; justify-content: space-between; margin: 3px 0; }
+            .net { text-align: right; font-weight: 700; font-size: 18px; margin-top: 6px; }
+            .thanks { text-align: center; margin-top: 12px; font-size: 12px; }
+            .dev { text-align: center; margin-top: 40px; padding: 6px 0; font-size: 10px; border-top: 1px dashed #000; border-bottom: 1px dashed #000; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            ${shopData?.logoUrl ? `<img class="header-logo" src="${shopData.logoUrl}" alt="logo" onerror='this.style.display="none"' />` : ''}
+            <div class="shop-name">${shopData?.shopName || 'Shop Name'}</div>
+            ${shopData?.address ? `<div class="shop-address">${shopData.address}</div>` : ''}
+            <div class="shop-phone">Phone # ${shopData?.phoneNumbers?.[0] || shopData?.phoneNumber || ''}</div>
+          </div>
+          <div class="sep"></div>
+          <div class="meta">
+            <div>Payment: ${transactionId}</div>
+            <div class="meta-right">${currentDate} ${currentTime}</div>
+          </div>
+          <div class="sep"></div>
+          <div style="font-size:12px; margin-bottom:8px;">Received loan payment from: <strong>${customerName}</strong></div>
+          <div class="totals">
+            <div class="line"><span>Amount Paid</span><span>${Math.round(parseFloat(amount))}</span></div>
+          </div>
+          <div class="net">${Math.round(parseFloat(amount))}</div>
+          <div class="thanks">Thank you</div>
+          <div class="dev">software developed by SARMAD 03425050007</div>
+        </body>
+      </html>
+    `;
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(receiptHTML);
+    iframeDoc.close();
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => { if (iframe && iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 1000);
+    }, 250);
+  };
+
   return (
     <>
       <MainNavbar />
@@ -292,6 +439,20 @@ const CustomerInformation = () => {
                         >
                           View Loans
                         </Button>
+                        {(() => {
+                          const custLoans = loans.filter(l => (l.customerName || '').toLowerCase() === (customer.name || '').toLowerCase() && (l.status || 'outstanding') !== 'paid');
+                          const total = custLoans.reduce((s, l) => s + (parseFloat(l.amount) || 0), 0);
+                          return total > 0 ? (
+                            <Button
+                              variant="outline-success"
+                              size="sm"
+                              className="me-2"
+                              onClick={() => openPayLoanModal(customer)}
+                            >
+                              Pay Loan
+                            </Button>
+                          ) : null;
+                        })()}
                         <Button
                           variant="outline-primary"
                           size="sm"
@@ -464,6 +625,32 @@ const CustomerInformation = () => {
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowLoansModal(false)}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal show={showPayLoanModal} onHide={() => setShowPayLoanModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Pay Loan - {payingCustomerName}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Outstanding: RS {outstandingTotal.toFixed(2)}</p>
+          <Form.Group className="mb-3">
+            <Form.Label>Amount to Pay (RS)</Form.Label>
+            <Form.Control
+              type="number"
+              value={paymentAmount}
+              onChange={(e) => setPaymentAmount(e.target.value)}
+              min="0"
+              step="0.01"
+            />
+            <Form.Text className="text-muted">Max: RS {outstandingTotal.toFixed(2)}</Form.Text>
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowPayLoanModal(false)} disabled={payLoading}>Cancel</Button>
+          <Button variant="success" onClick={confirmPayLoan} disabled={payLoading || outstandingTotal <= 0 || (parseFloat(paymentAmount)||0) <= 0}>
+            {payLoading ? 'Processing...' : 'Pay Now'}
+          </Button>
         </Modal.Footer>
       </Modal>
     </>
