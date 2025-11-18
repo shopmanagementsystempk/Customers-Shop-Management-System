@@ -26,7 +26,7 @@ const NewReceipt = () => {
   const [discount, setDiscount] = useState('');
   const [tax, setTax] = useState('');
   const [enterAmount, setEnterAmount] = useState('');
-  const [isLoan, setIsLoan] = useState(false);
+  const [loanAmount, setLoanAmount] = useState('');
   const [transactionId] = useState(generateTransactionId());
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -250,7 +250,9 @@ const NewReceipt = () => {
     const taxAmount = (taxPercentage / 100) * subtotalAfterDiscount;
     const payable = subtotalAfterDiscount + taxAmount;
     const receivedAmount = parseFloat(enterAmount || 0);
-    const balance = receivedAmount - payable;
+    const loanAmt = Math.max(0, Math.min(parseFloat(loanAmount || 0) || 0, payable));
+    const effectivePayable = Math.max(0, payable - loanAmt);
+    const balance = receivedAmount - effectivePayable;
     
     return {
       totalQuantities: totalQuantities.toFixed(2),
@@ -259,9 +261,11 @@ const NewReceipt = () => {
       payable: payable.toFixed(2),
       receivedAmount: receivedAmount.toFixed(2),
       balance: balance.toFixed(2),
-      return: balance < 0 ? Math.abs(balance).toFixed(2) : '0.00'
+      return: balance < 0 ? Math.abs(balance).toFixed(2) : '0.00',
+      loanAmount: loanAmt.toFixed(2),
+      effectivePayable: effectivePayable.toFixed(2)
     };
-  }, [items, discount, tax, enterAmount]);
+  }, [items, discount, tax, enterAmount, loanAmount]);
 
   // Handle item changes
   const handleItemChange = (index, field, value) => {
@@ -472,7 +476,7 @@ const NewReceipt = () => {
             <div class="line"><span>Total</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
             ${parseFloat(discount) > 0 ? `<div class="line"><span>Discount</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
             <div class="line"><span>Net Total</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
-            ${isLoan ? `<div class="line"><span>Loan</span><span>${Math.round(Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0))}</span></div>` : ''}
+            ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>Loan</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
           </div>
 
           <div class="net">${Math.round(parseFloat(totals.payable))}</div>
@@ -540,23 +544,23 @@ const NewReceipt = () => {
         discount: parseFloat(discount) || 0,
         paymentMethod: 'Cash',
         cashGiven: parseFloat(enterAmount) || 0,
-        change: parseFloat(enterAmount) - parseFloat(totals.payable) || 0,
+        change: (parseFloat(enterAmount) || 0) - Math.max(parseFloat(totals.payable) - (parseFloat(loanAmount || 0) || 0), 0),
         employeeName: selectedEmployee ? selectedEmployee.name : null,
         employeeId: selectedEmployee ? selectedEmployee.id : null,
         customerName: customer,
-        isLoan: !!isLoan,
-        loanAmount: Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0)
+        isLoan: (parseFloat(loanAmount || 0) || 0) > 0,
+        loanAmount: Math.max(parseFloat(loanAmount || 0) || 0, 0)
       };
       
       const receiptId = await saveReceipt(receiptData);
-      if (isLoan && customer && customer !== 'Walk-in Customer') {
+      if ((parseFloat(loanAmount || 0) || 0) > 0 && customer && customer !== 'Walk-in Customer') {
         try {
           await addDoc(collection(db, 'customerLoans'), {
             shopId: activeShopId,
             customerName: customer,
             receiptId,
             transactionId,
-            amount: Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0),
+            amount: Math.max(parseFloat(loanAmount || 0) || 0, 0),
             timestamp: new Date().toISOString(),
             status: 'outstanding'
           });
@@ -867,15 +871,19 @@ const NewReceipt = () => {
                   Payment Summary
                 </h5>
 
-                <div className="loan-banner mb-3">
-                  <i className="bi bi-exclamation-diamond-fill"></i>
-                  <Form.Check
-                    type="switch"
-                    id="isLoan"
-                    label="Mark as Loan"
-                    checked={isLoan}
-                    onChange={(e) => setIsLoan(e.target.checked)}
-                  />
+                <div className="mb-3">
+                  <Form.Group>
+                    <Form.Label>Loan Amount (RS)</Form.Label>
+                    <Form.Control
+                      type="number"
+                      value={loanAmount}
+                      onChange={(e) => setLoanAmount(e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                    />
+                    <Form.Text className="text-muted">Optional. If provided, cash change is computed on payable minus loan.</Form.Text>
+                  </Form.Group>
                 </div>
 
                 <div className="mb-4">
@@ -950,11 +958,11 @@ const NewReceipt = () => {
                       {formatCurrency(totals.balance)}
                     </strong>
                   </div>
-                  {isLoan && (
+                  {parseFloat(totals.loanAmount) > 0 && (
                     <div className="d-flex justify-content-between mt-2">
                       <span className="fw-bold">Loan:</span>
                       <strong className="text-danger">
-                        {formatCurrency(Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0))}
+                        {formatCurrency(totals.loanAmount)}
                       </strong>
                     </div>
                   )}
