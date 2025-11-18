@@ -36,6 +36,8 @@ const NewReceipt = () => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [employeesLoaded, setEmployeesLoaded] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [customersLoaded, setCustomersLoaded] = useState(false);
   const navigate = useNavigate();
   const pdfRef = useRef();
 
@@ -78,6 +80,28 @@ const NewReceipt = () => {
       fetchEmployees();
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    if (currentUser || activeShopId) {
+      const fetchCustomers = async () => {
+        try {
+          const customersRef = collection(db, 'customers');
+          const customersQuery = query(
+            customersRef,
+            where('shopId', '==', activeShopId || currentUser.uid)
+          );
+          const snapshot = await getDocs(customersQuery);
+          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          list.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+          setCustomers(list);
+          setCustomersLoaded(true);
+        } catch (error) {
+          setCustomersLoaded(true);
+        }
+      };
+      fetchCustomers();
+    }
+  }, [currentUser, activeShopId]);
 
   // Cleanup: Remove any print iframes when component unmounts
   useEffect(() => {
@@ -594,6 +618,10 @@ const NewReceipt = () => {
   const employeeOptions = employeesLoaded ? 
     employees.map(emp => ({ value: emp.id, label: emp.name })) : [];
 
+  const customerOptions = customersLoaded 
+    ? [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }, ...customers.map(c => ({ value: c.name, label: c.name }))]
+    : [{ value: 'Walk-in Customer', label: 'Walk-in Customer' }];
+
 
   return (
     <>
@@ -679,11 +707,18 @@ const NewReceipt = () => {
                   <Col md={6}>
                     <Form.Group>
                       <Form.Label>Customer Name</Form.Label>
-                      <Form.Control
-                        type="text"
-                        value={customer}
-                        onChange={(e) => setCustomer(e.target.value)}
+                      <Select
+                        value={customerOptions.find(opt => opt.value === customer) || null}
+                        onChange={(option) => setCustomer(option ? option.value : 'Walk-in Customer')}
+                        options={customerOptions}
                         placeholder="Walk-in Customer"
+                        isClearable
+                        className="basic-single"
+                        classNamePrefix="select"
+                        menuPortalTarget={document.body}
+                        styles={{
+                          menuPortal: (base) => ({ ...base, zIndex: 9999 })
+                        }}
                       />
                     </Form.Group>
                   </Col>
