@@ -13,7 +13,7 @@ import { formatDisplayDate } from '../utils/dateUtils';
 import MainNavbar from '../components/Navbar';
 import PageHeader from '../components/PageHeader';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import '../styles/select.css';
 
 const NewReceipt = () => {
@@ -543,11 +543,27 @@ const NewReceipt = () => {
         change: parseFloat(enterAmount) - parseFloat(totals.payable) || 0,
         employeeName: selectedEmployee ? selectedEmployee.name : null,
         employeeId: selectedEmployee ? selectedEmployee.id : null,
+        customerName: customer,
         isLoan: !!isLoan,
         loanAmount: Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0)
       };
       
       const receiptId = await saveReceipt(receiptData);
+      if (isLoan && customer && customer !== 'Walk-in Customer') {
+        try {
+          await addDoc(collection(db, 'customerLoans'), {
+            shopId: activeShopId,
+            customerName: customer,
+            receiptId,
+            transactionId,
+            amount: Math.max(parseFloat(totals.payable) - parseFloat(enterAmount || 0), 0),
+            timestamp: new Date().toISOString(),
+            status: 'outstanding'
+          });
+        } catch (e) {
+          console.error('Failed to record customer loan', e);
+        }
+      }
       
       // Update stock
       await updateStockQuantity(activeShopId, receiptItems.map(item => ({
