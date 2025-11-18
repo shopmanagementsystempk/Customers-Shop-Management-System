@@ -25,6 +25,10 @@
   letter-spacing: 0.04em;
   display: block;
   margin-bottom: 0.35rem;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .sidebar-user-meta {
