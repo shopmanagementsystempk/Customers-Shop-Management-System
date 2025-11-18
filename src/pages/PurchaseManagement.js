@@ -8,7 +8,7 @@ import { formatDisplayDate } from '../utils/dateUtils';
 import { getShopStock } from '../utils/stockUtils';
 import { getInventoryCategories, addInventoryCategory, updateInventoryCategory, deleteInventoryCategory } from '../utils/categoryUtils';
 import { db } from '../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
 
 const defaultRow = {
   sourceItemId: '',
@@ -61,6 +61,10 @@ const PurchaseManagement = () => {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [categoryError, setCategoryError] = useState('');
   const [categorySuccess, setCategorySuccess] = useState('');
+  const [units, setUnits] = useState(['units', 'kg', 'litre', 'pack']);
+  const [unitsLoading, setUnitsLoading] = useState(false);
+  const [showUnitModal, setShowUnitModal] = useState(false);
+  const [newUnitName, setNewUnitName] = useState('');
 
   const totalCost = useMemo(() => {
     return rows.reduce((sum, row) => sum + calculateRowTotal(row), 0);
@@ -129,6 +133,27 @@ const PurchaseManagement = () => {
   useEffect(() => {
     fetchSuppliers();
   }, [fetchSuppliers]);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const fetchUnits = async () => {
+      try {
+        setUnitsLoading(true);
+        const unitsRef = collection(db, 'units');
+        const q = query(unitsRef, where('shopId', '==', currentUser.uid));
+        const snapshot = await getDocs(q);
+        const custom = snapshot.docs.map(d => (d.data().name || '').toLowerCase()).filter(Boolean);
+        const defaults = ['units', 'kg', 'litre', 'pack'];
+        const merged = Array.from(new Set([...defaults, ...custom]));
+        setUnits(merged);
+      } catch (e) {
+        console.error('Failed to load units', e);
+      } finally {
+        setUnitsLoading(false);
+      }
+    };
+    fetchUnits();
+  }, [currentUser]);
 
   const setRowValue = (index, key, value) => {
     setRows(prev => {
@@ -201,6 +226,45 @@ const PurchaseManagement = () => {
   const handleDeleteCategory = (category) => {
     setCategoryToDelete(category);
     setShowDeleteCategoryModal(true);
+  };
+
+  const handleAddUnit = async (e) => {
+    e.preventDefault();
+    if (!currentUser?.uid) return;
+    const name = (newUnitName || '').trim();
+    if (!name) return;
+    try {
+      const unitsRef = collection(db, 'units');
+      await addDoc(unitsRef, { shopId: currentUser.uid, name });
+      setNewUnitName('');
+      setShowUnitModal(false);
+      // refresh list
+      const q = query(unitsRef, where('shopId', '==', currentUser.uid));
+      const snapshot = await getDocs(q);
+      const custom = snapshot.docs.map(d => (d.data().name || '').toLowerCase()).filter(Boolean);
+      const defaults = ['units', 'kg', 'litre', 'pack'];
+      const merged = Array.from(new Set([...defaults, ...custom]));
+      setUnits(merged);
+    } catch (e) {
+      console.error('Failed to add unit', e);
+    }
+  };
+
+  const handleDeleteUnit = async (unitId) => {
+    if (!unitId) return;
+    try {
+      await deleteDoc(doc(db, 'units', unitId));
+      // refresh list
+      const unitsRef = collection(db, 'units');
+      const q = query(unitsRef, where('shopId', '==', currentUser.uid));
+      const snapshot = await getDocs(q);
+      const custom = snapshot.docs.map(d => (d.data().name || '').toLowerCase()).filter(Boolean);
+      const defaults = ['units', 'kg', 'litre', 'pack'];
+      const merged = Array.from(new Set([...defaults, ...custom]));
+      setUnits(merged);
+    } catch (e) {
+      console.error('Failed to delete unit', e);
+    }
   };
 
   const confirmDeleteCategory = async () => {
@@ -616,13 +680,25 @@ const PurchaseManagement = () => {
                         </Col>
                         <Col md={3}>
                           <Form.Group>
-                            <Form.Label>Unit</Form.Label>
-                            <Form.Select value={row.unit} onChange={(e) => setRowValue(idx, 'unit', e.target.value)}>
-                              <option value="units">Units</option>
-                              <option value="kg">KG</option>
-                              <option value="litre">Litre</option>
-                              <option value="pack">Pack</option>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <Form.Label className="mb-0">Unit</Form.Label>
+                              <Button
+                                variant="link"
+                                size="sm"
+                                className="p-0 text-decoration-none"
+                                onClick={() => setShowUnitModal(true)}
+                                style={{ fontSize: '0.75rem' }}
+                              >
+                                <i className="bi bi-pencil-square me-1"></i>Manage Units
+                              </Button>
+                            </div>
+                            <Form.Select value={row.unit} onChange={(e) => setRowValue(idx, 'unit', e.target.value)} disabled={unitsLoading}>
+                              {units.map(u => {
+                                const label = u === 'kg' ? 'KG' : u === 'litre' ? 'Litre' : u === 'pack' ? 'Pack' : u === 'units' ? 'Units' : u.charAt(0).toUpperCase() + u.slice(1);
+                                return <option key={u} value={u}>{label}</option>;
+                              })}
                             </Form.Select>
+                            <Form.Text className="text-muted">{unitsLoading ? 'Loading units...' : ''}</Form.Text>
                           </Form.Group>
                         </Col>
                         <Col md={3}>
@@ -823,6 +899,74 @@ const PurchaseManagement = () => {
             <Button variant="danger" onClick={confirmDeleteCategory} disabled={categoriesLoading}>
               {categoriesLoading ? 'Deleting...' : 'Delete'}
             </Button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* Unit Management Modal */}
+        <Modal show={showUnitModal} onHide={() => setShowUnitModal(false)}>
+          <Modal.Header closeButton>
+            <Modal.Title>Manage Units</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form onSubmit={handleAddUnit} className="mb-3">
+              <Row className="g-2">
+                <Col xs={8}>
+                  <Form.Control
+                    type="text"
+                    placeholder="New unit (e.g., box, dozen)"
+                    value={newUnitName}
+                    onChange={(e) => setNewUnitName(e.target.value)}
+                    required
+                  />
+                </Col>
+                <Col xs={4}>
+                  <Button type="submit" variant="primary" disabled={unitsLoading}>Add Unit</Button>
+                </Col>
+              </Row>
+            </Form>
+
+            <h6>Available Units</h6>
+            {unitsLoading ? (
+              <div className="text-center py-2"><Spinner animation="border" size="sm" /></div>
+            ) : (
+              <Table hover size="sm">
+                <thead>
+                  <tr>
+                    <th>Unit</th>
+                    <th style={{width:'120px'}}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {units.map(u => (
+                    <tr key={u}>
+                      <td>{u}</td>
+                      <td>
+                        {['units','kg','litre','pack'].includes(u) ? (
+                          <span className="text-muted">Default</span>
+                        ) : (
+                          <Button
+                            variant="outline-danger"
+                            size="sm"
+                            onClick={async () => {
+                              const unitsRef = collection(db, 'units');
+                              const q = query(unitsRef, where('shopId','==', currentUser.uid));
+                              const snapshot = await getDocs(q);
+                              const match = snapshot.docs.find(d => (d.data().name || '').toLowerCase() === u.toLowerCase());
+                              if (match) handleDeleteUnit(match.id);
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            )}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => setShowUnitModal(false)}>Close</Button>
           </Modal.Footer>
         </Modal>
       </Container>
