@@ -473,9 +473,10 @@ const NewReceipt = () => {
             </tbody>
           </table>
 
-          <div class="totals">
+            <div class="totals">
             <div class="line"><span>Total</span><span>${parseFloat(totals.totalQuantities).toFixed(2)}</span></div>
             ${parseFloat(discount) > 0 ? `<div class="line"><span>Discount</span><span>${Math.round(parseFloat(discount))}</span></div>` : ''}
+            ${parseFloat(totals.taxAmount) > 0 ? `<div class="line"><span>Tax (${tax || 0}%)</span><span>${Math.round(parseFloat(totals.taxAmount))}</span></div>` : ''}
             <div class="line"><span>Net Total</span><span>${Math.round(parseFloat(totals.payable))}</span></div>
             ${parseFloat(totals.loanAmount) > 0 ? `<div class="line"><span>Loan</span><span>${Math.round(parseFloat(totals.loanAmount))}</span></div>` : ''}
           </div>
@@ -502,7 +503,7 @@ const NewReceipt = () => {
         }
       }, 1000);
     }, 250);
-  }, [discount, items, shopData, totals, transactionId]);
+  }, [discount, items, shopData, tax, totals, transactionId]);
 
   // Handle form submission
   const handleSubmit = useCallback(async (e) => {
